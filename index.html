@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audiobook Library — Mount Lawley Senior High School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#00275B;
+    --ink-2:#0B3169;
+    --ink-3:#163C77;
+    --card:#F1E9D8;
+    --card-line:#D9CBA8;
+    --brass:#EAA58C;
+    --brass-bright:#F4BBA3;
+    --stamp-red:#A13D3D;
+    --green:#4F6F52;
+    --ink-text:#2A2118;
+    --ink-text-soft:#5B4E3D;
+    --paper-text:#EDE7DA;
+    --paper-text-soft:#A9B2BE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #1a4a8c60, transparent),
+      var(--ink);
+    color:var(--paper-text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .top{
+    padding:36px 24px 18px;
+    width:80%;
+    max-width:1600px;
+    margin:0 auto;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--brass-bright);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:clamp(32px,5vw,48px);
+    margin:0 0 4px;
+    letter-spacing:-.01em;
+  }
+  .sub{
+    color:var(--paper-text-soft);
+    font-size:14.5px;
+    margin:0 0 22px;
+    max-width:560px;
+    line-height:1.5;
+  }
+  .waveform{
+    display:flex;
+    align-items:flex-end;
+    gap:3px;
+    height:22px;
+    margin:0 0 26px;
+    opacity:.6;
+  }
+  .waveform span{
+    width:3px;
+    background:var(--brass);
+    border-radius:2px;
+    display:block;
+  }
+  .toolbar{
+    width:80%;
+    max-width:1600px;
+    margin:0 auto;
+    padding:0 24px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .search-wrap{
+    position:relative;
+    flex:1 1 220px;
+  }
+  input[type=text], select, textarea{
+    font-family:'Inter',sans-serif;
+    background:var(--ink-2);
+    border:1px solid #3A4859;
+    color:var(--paper-text);
+    padding:10px 12px;
+    border-radius:6px;
+    font-size:14px;
+    width:100%;
+    outline:none;
+    transition:border-color .15s;
+  }
+  input[type=text]:focus, select:focus, textarea:focus{
+    border-color:var(--brass);
+  }
+  select{
+    width:auto;
+    cursor:pointer;
+  }
+  .btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    background:var(--brass);
+    color:var(--ink);
+    border:none;
+    padding:11px 18px;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:600;
+    transition:transform .1s, background .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{background:var(--brass-bright);}
+  .btn:active{transform:scale(.97);}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .btn.ghost{
+    background:transparent;
+    border:1px solid #3A4859;
+    color:var(--paper-text-soft);
+  }
+  .btn.ghost:hover{border-color:var(--brass); color:var(--brass-bright); background:transparent;}
+  .btn.small{
+    padding:8px 12px;
+    font-size:11px;
+  }
+  .drawer-tabs{
+    width:80%;
+    max-width:1600px;
+    margin:0 auto 22px;
+    padding:0 24px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .drawer-tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.03em;
+    padding:7px 14px;
+    border-radius:4px 4px 2px 2px;
+    background:var(--ink-3);
+    border:1px solid #3A4859;
+    border-bottom:3px solid #3A4859;
+    color:var(--paper-text-soft);
+    cursor:pointer;
+    transition:all .15s;
+  }
+  .drawer-tab:hover{color:var(--paper-text);}
+  .drawer-tab.active{
+    background:var(--ink-3);
+    border-color:var(--brass);
+    border-bottom:3px solid var(--brass);
+    color:var(--brass-bright);
+  }
+  .grid{
+    width:80%;
+    max-width:1600px;
+    margin:0 auto;
+    padding:0 24px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+    gap:18px;
+  }
+  .card{
+    background:
+      repeating-linear-gradient(var(--card), var(--card) 27px, var(--card-line) 28px);
+    background-color:var(--card);
+    color:var(--ink-text);
+    border-radius:3px;
+    padding:20px 18px 16px;
+    position:relative;
+    box-shadow:0 8px 20px -8px #00000060, 0 0 0 1px #00000010;
+    animation:slideIn .35s ease both;
+    display:flex;
+    flex-direction:column;
+    min-height:190px;
+  }
+  @keyframes slideIn{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    top:10px; left:50%;
+    transform:translateX(-50%);
+    width:34px; height:9px;
+    background:#00000012;
+    border-radius:2px;
+  }
+  .card-top{
+    display:flex;
+    gap:12px;
+    margin-top:6px;
+  }
+  .cover-thumb{
+    width:58px;
+    height:87px;
+    object-fit:cover;
+    border-radius:2px;
+    box-shadow:0 3px 8px #00000040, 0 0 0 1px #00000015;
+    flex-shrink:0;
+    background:#fff;
+  }
+  .cover-placeholder{
+    width:58px;
+    height:87px;
+    border:1px dashed var(--card-line);
+    border-radius:2px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--card-line);
+  }
+  .cover-placeholder svg{width:22px; height:22px; opacity:.7;}
+  .card-info{
+    flex:1;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .genre-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--green);
+    border:1px solid var(--green);
+    border-radius:3px;
+    padding:2px 7px;
+    display:inline-block;
+    width:fit-content;
+    margin:0 0 8px;
+  }
+  .card h3{
+    font-family:'Poppins',sans-serif;
+    font-weight:600;
+    font-size:18px;
+    margin:0 0 4px;
+    line-height:1.25;
+  }
+  .series-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:#A56A50;
+    background:none;
+    border:none;
+    border-bottom:1px dashed #A56A50;
+    padding:0;
+    margin:4px 0 0;
+    width:fit-content;
+    cursor:pointer;
+    text-align:left;
+  }
+  .series-tag:hover{
+    color:var(--ink-text);
+    border-bottom-color:var(--ink-text);
+  }
+  .card .author{
+    font-size:13px;
+    color:var(--ink-text-soft);
+    font-style:italic;
+    margin:0;
+  }
+  .card .notes{
+    font-size:12.5px;
+    color:var(--ink-text-soft);
+    line-height:1.4;
+    margin:10px 0 0;
+    flex:1;
+  }
+  .card-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:auto;
+    padding-top:12px;
+    border-top:1px dashed var(--card-line);
+  }
+  .stamp{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--stamp-red);
+    border:2px solid var(--stamp-red);
+    border-radius:5px;
+    padding:5px 10px;
+    background:transparent;
+    cursor:pointer;
+    transform:rotate(-3deg);
+    transition:transform .12s, background .12s, color .12s;
+    text-decoration:none;
+    display:inline-block;
+  }
+  .stamp:hover{
+    background:var(--stamp-red);
+    color:var(--card);
+  }
+  .stamp:active{
+    transform:rotate(-3deg) scale(.94);
+  }
+  .icon-btn{
+    background:none;
+    border:none;
+    color:var(--ink-text-soft);
+    cursor:pointer;
+    font-size:13px;
+    padding:4px 6px;
+    font-family:'Inter',sans-serif;
+  }
+  .icon-btn:hover{color:var(--stamp-red);}
+  .empty{
+    width:80%;
+    max-width:1600px;
+    margin:40px auto;
+    padding:50px 24px;
+    text-align:center;
+    color:var(--paper-text-soft);
+    border:1px dashed #3A4859;
+    border-radius:8px;
+  }
+  .empty h2{
+    font-family:'Poppins',sans-serif;
+    color:var(--paper-text);
+    font-size:22px;
+    margin:0 0 8px;
+  }
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:#0009;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .modal{
+    background:var(--card);
+    color:var(--ink-text);
+    border-radius:6px;
+    padding:26px 24px;
+    max-width:440px;
+    width:100%;
+    box-shadow:0 20px 50px -10px #000000aa;
+    animation:slideIn .25s ease both;
+  }
+  .modal h2{
+    font-family:'Poppins',sans-serif;
+    margin:0 0 4px;
+    font-size:22px;
+  }
+  .modal .hint{
+    font-size:12.5px;
+    color:var(--ink-text-soft);
+    margin:0 0 18px;
+  }
+  .field{
+    margin-bottom:13px;
+  }
+  .field label{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--ink-text-soft);
+    margin-bottom:5px;
+  }
+  .modal input[type=text], .modal textarea{
+    background:#fff;
+    border:1px solid var(--card-line);
+    color:var(--ink-text);
+  }
+  .modal textarea{resize:vertical; min-height:52px;}
+  .modal-actions{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+    margin-top:18px;
+  }
+  .modal .btn.secondary{
+    background:transparent;
+    border:1px solid var(--card-line);
+    color:var(--ink-text-soft);
+  }
+  .required-star{color:var(--stamp-red);}
+  .cover-field-row{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+  }
+  .cover-preview-box{
+    width:58px;
+    height:87px;
+    border:1px dashed var(--card-line);
+    border-radius:2px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:#fff;
+  }
+  .cover-preview-box img{width:100%; height:100%; object-fit:cover;}
+  .cover-preview-box svg{width:20px; height:20px; color:var(--card-line);}
+  .cover-controls{flex:1; min-width:0;}
+  .cover-fetch-status{
+    font-size:11.5px;
+    color:var(--ink-text-soft);
+    margin:5px 0 0;
+    min-height:14px;
+  }
+  .status{
+    width:80%;
+    max-width:1600px;
+    margin:0 auto 14px;
+    padding:0 24px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--paper-text-soft);
+  }
+  .count{
+    color:var(--brass-bright);
+  }
+  .sync-notice{
+    width:80%;
+    max-width:1600px;
+    margin:-8px auto 14px;
+    padding:0 24px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--brass-bright);
+    min-height:0;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .card, .modal{animation:none;}
+  }
+
+  .login-footer{
+    width:80%;
+    max-width:1600px;
+    margin:40px auto 0;
+    padding:18px 24px;
+    border-top:1px solid #2A3849;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .login-status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--paper-text-soft);
+  }
+  .login-status.active{color:var(--brass-bright);}
+  .login-error{
+    font-size:12px;
+    color:var(--stamp-red);
+    margin:8px 0 0;
+    min-height:14px;
+  }
+
+  .resource-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:7px;
+    align-items:center;
+  }
+  .resource-row input{
+    flex:1;
+    font-size:13px;
+    padding:8px 10px;
+    min-width:0;
+  }
+  .resource-row .icon-btn{
+    flex-shrink:0;
+    font-size:15px;
+    padding:4px 8px;
+  }
+  .resources-dropdown{
+    margin-top:10px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .resources-dropdown summary{
+    cursor:pointer;
+    color:var(--ink-text-soft);
+    list-style:none;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    user-select:none;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .resources-dropdown summary::-webkit-details-marker{display:none;}
+  .resources-dropdown summary::after{content:'▾'; font-size:9px;}
+  .resources-dropdown[open] summary::after{content:'▴';}
+  .resources-dropdown ul{
+    list-style:none;
+    margin:6px 0 0;
+    padding:0 0 0 10px;
+    border-left:2px solid var(--card-line);
+  }
+  .resources-dropdown li{margin-bottom:5px;}
+  .resources-dropdown a{
+    color:var(--green);
+    text-decoration:none;
+    font-size:11.5px;
+  }
+  .resources-dropdown a:hover{text-decoration:underline;}
+
+  .page-gate{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #1a4a8c60, transparent),
+      var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .gate-box{
+    background:var(--card);
+    color:var(--ink-text);
+    border-radius:8px;
+    padding:34px 30px;
+    max-width:400px;
+    width:100%;
+    box-shadow:0 20px 50px -10px #000000aa;
+    text-align:left;
+  }
+  .gate-box .eyebrow{
+    color:var(--stamp-red);
+    opacity:.75;
+  }
+  .gate-box h2{
+    font-family:'Poppins',sans-serif;
+    margin:4px 0 6px;
+    font-size:22px;
+    color:var(--ink-text);
+  }
+  .gate-box .hint{
+    font-size:12.5px;
+    color:var(--ink-text-soft);
+    margin:0 0 18px;
+  }
+  .gate-box input[type=text]{
+    background:#fff;
+    border:1px solid var(--card-line);
+    color:var(--ink-text);
+  }
+</style>
+</head>
+<body>
+
+<div id="pageGate" class="page-gate">
+  <div class="gate-box">
+    <p class="eyebrow">Mount Lawley Senior High School</p>
+    <h2>Enter Password</h2>
+    <p class="hint">This page is password protected. Enter the password to continue.</p>
+    <div class="field">
+      <label>Password</label>
+      <input type="text" id="gatePasswordInput" placeholder="Password">
+    </div>
+    <p class="login-error" id="gateError"></p>
+    <button class="btn" id="gateSubmitBtn" style="width:100%; margin-top:6px;">Continue</button>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
+<div class="top">
+  <p class="eyebrow">Mount Lawley Senior High School</p>
+  <h1>Audiobook Library</h1>
+  <p class="sub">This is our collection of audiobooks. You can search for a specific title or author or click on the genre label to see what audiobooks are available in that category.</p>
+  <div class="waveform" id="waveform"></div>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Search title or author…">
+  </div>
+  <select id="sortSelect">
+    <option value="title">Sort: Title A–Z</option>
+    <option value="author">Sort: Author A–Z</option>
+    <option value="genre">Sort: Genre</option>
+    <option value="added">Sort: Recently Added</option>
+  </select>
+  <button class="btn" id="addBtn">+ Add Audiobook</button>
+</div>
+
+<div class="drawer-tabs" id="genreTabs"></div>
+
+<div class="status" id="statusLine"></div>
+<p class="sync-notice" id="syncNotice"></p>
+
+<div class="grid" id="grid"></div>
+<div class="empty" id="emptyState" style="display:none;">
+  <h2>This drawer is empty.</h2>
+  <p>Add the first audiobook — paste in its title, author, genre, and the share link from Drive or Dropbox.</p>
+  <button class="btn" onclick="openModal()">+ Add Audiobook</button>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" style="display:none;">
+  <div class="modal">
+    <h2 id="modalTitle">New Card</h2>
+    <p class="hint">File a book into the catalog.</p>
+    <input type="hidden" id="editId">
+    <div class="field">
+      <label>Title <span class="required-star">*</span></label>
+      <input type="text" id="fTitle" placeholder="e.g. Project Hail Mary">
+    </div>
+    <div class="field">
+      <label>Author <span class="required-star">*</span></label>
+      <input type="text" id="fAuthor" placeholder="e.g. Andy Weir">
+    </div>
+    <div class="field">
+      <label>Genre <span class="required-star">*</span></label>
+      <input type="text" id="fGenre" placeholder="e.g. Sci-Fi" list="genreList">
+      <datalist id="genreList"></datalist>
+    </div>
+    <div class="field">
+      <label>Series (optional)</label>
+      <input type="text" id="fSeries" placeholder="e.g. Foundation" list="seriesList">
+      <datalist id="seriesList"></datalist>
+    </div>
+    <div class="field">
+      <label>Cloud link (Drive / Dropbox share link) <span class="required-star">*</span></label>
+      <input type="text" id="fLink" placeholder="https://drive.google.com/...">
+    </div>
+    <div class="field">
+      <label>Cover</label>
+      <div class="cover-field-row">
+        <div class="cover-preview-box" id="coverPreviewBox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 3v18"/></svg>
+        </div>
+        <div class="cover-controls">
+          <input type="text" id="fCover" placeholder="Paste image URL, or auto-fetch below">
+          <button class="btn small ghost" id="fetchCoverBtn" style="margin-top:8px;">Auto-fetch from title/author</button>
+          <p class="cover-fetch-status" id="coverFetchStatus"></p>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="fNotes" placeholder="Narrator, length, series info…"></textarea>
+    </div>
+    <div class="field">
+      <label>Additional Resources (optional)</label>
+      <div id="resourceRows"></div>
+      <button type="button" class="btn small ghost" id="addResourceBtn" style="margin-top:2px;">+ Add resource</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveBook()">Save to Catalog</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-footer">
+  <span class="login-status" id="loginStatus">Viewing only</span>
+  <button class="btn ghost small" id="loginBtn">Log in to edit</button>
+</div>
+
+<div class="modal-backdrop" id="loginBackdrop" style="display:none;">
+  <div class="modal">
+    <h2>Log In</h2>
+    <p class="hint">Enter the catalog password to enable editing.</p>
+    <div class="field">
+      <label>Password</label>
+      <input type="text" id="loginPasswordInput" placeholder="Password">
+    </div>
+    <p class="login-error" id="loginError"></p>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeLoginModal()">Cancel</button>
+      <button class="btn" id="loginSubmitBtn">Log In</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'audiobooks';
+let books = [];
+let activeGenre = 'All';
+let activeSeries = null;
+let sortMode = 'title';
+let isLoggedIn = false;
+
+function localGet(key){
+  try{
+    const value = localStorage.getItem(key);
+    return value === null ? null : {key, value};
+  }catch(e){
+    return null;
+  }
+}
+function localSet(key, value){
+  try{
+    localStorage.setItem(key, value);
+    return {key, value};
+  }catch(e){
+    return null;
+  }
+}
+
+function simpleHash(str){
+  let hash = 0;
+  for(let i = 0; i < str.length; i++){
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'h_' + Math.abs(hash).toString(36) + '_' + str.length;
+}
+
+const EDIT_PASSWORD_HASH = 'h_eggp29_18';
+
+function updateLoginUI(){
+  const statusEl = document.getElementById('loginStatus');
+  const btn = document.getElementById('loginBtn');
+  if(isLoggedIn){
+    statusEl.textContent = 'Editing enabled';
+    statusEl.classList.add('active');
+    btn.textContent = 'Log out';
+  } else {
+    statusEl.textContent = 'Viewing only';
+    statusEl.classList.remove('active');
+    btn.textContent = 'Log in to edit';
+  }
+}
+
+function openLoginModal(){
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginPasswordInput').value = '';
+  document.getElementById('loginBackdrop').style.display = 'flex';
+}
+function closeLoginModal(){
+  document.getElementById('loginBackdrop').style.display = 'none';
+}
+document.getElementById('loginBackdrop').addEventListener('click', (e) => {
+  if(e.target.id === 'loginBackdrop') closeLoginModal();
+});
+
+document.getElementById('loginBtn').addEventListener('click', () => {
+  if(isLoggedIn){
+    isLoggedIn = false;
+    updateLoginUI();
+    render();
+  } else {
+    openLoginModal();
+  }
+});
+
+document.getElementById('loginSubmitBtn').addEventListener('click', () => {
+  const pw = document.getElementById('loginPasswordInput').value;
+  const errorEl = document.getElementById('loginError');
+
+  if(!pw){
+    errorEl.textContent = 'Enter a password.';
+    return;
+  }
+
+  if(simpleHash(pw) === EDIT_PASSWORD_HASH){
+    isLoggedIn = true;
+    updateLoginUI();
+    closeLoginModal();
+    render();
+  } else {
+    errorEl.textContent = 'Incorrect password.';
+  }
+});
+
+document.getElementById('loginPasswordInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('loginSubmitBtn').click();
+});
+
+
+const bookIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 3v18"/></svg>';
+
+function buildWaveform(){
+  const wf = document.getElementById('waveform');
+  const bars = 40;
+  let html = '';
+  for(let i=0;i<bars;i++){
+    const h = 4 + Math.round(Math.abs(Math.sin(i*0.5))*18);
+    html += `<span style="height:${h}px"></span>`;
+  }
+  wf.innerHTML = html;
+}
+buildWaveform();
+
+const FIREBASE_API_KEY = 'AIzaSyBydKS6lm68O1PvGtUh5UGsTeyqEwEmt90';
+const FIREBASE_PROJECT_ID = 'mlshs-audiobook-library';
+const FIRESTORE_DOC_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/library/books?key=${FIREBASE_API_KEY}`;
+
+async function fetchSharedBooks(){
+  try{
+    const res = await fetch(FIRESTORE_DOC_URL);
+    if(res.status === 404){
+      return [];
+    }
+    if(!res.ok){
+      return null;
+    }
+    const data = await res.json();
+    const raw = data.fields && data.fields.data && data.fields.data.stringValue;
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){
+    return null;
+  }
+}
+
+async function saveSharedBooks(booksArr){
+  try{
+    const body = { fields: { data: { stringValue: JSON.stringify(booksArr) } } };
+    const res = await fetch(FIRESTORE_DOC_URL, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    return res.ok;
+  }catch(e){
+    return false;
+  }
+}
+
+async function loadBooks(){
+  document.getElementById('statusLine').textContent = 'Opening the drawer…';
+  const shared = await fetchSharedBooks();
+  if(shared !== null){
+    books = shared;
+    localSet(STORAGE_KEY, JSON.stringify(books));
+    document.getElementById('syncNotice').textContent = '';
+  } else {
+    try{
+      const result = localGet(STORAGE_KEY);
+      books = result ? JSON.parse(result.value) : [];
+    }catch(e){
+      books = [];
+    }
+    document.getElementById('syncNotice').textContent = 'Could not reach the shared library — showing the last saved copy on this device.';
+  }
+  updateLoginUI();
+  document.getElementById('statusLine').textContent = '';
+  render();
+}
+
+async function persist(){
+  document.getElementById('syncNotice').textContent = 'Syncing…';
+  const ok = await saveSharedBooks(books);
+  localSet(STORAGE_KEY, JSON.stringify(books));
+  document.getElementById('syncNotice').textContent = ok
+    ? ''
+    : 'Could not reach the shared library — this change was only saved on this device.';
+}
+
+function uid(){
+  return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+}
+
+function addResourceRow(label, url){
+  const container = document.getElementById('resourceRows');
+  const row = document.createElement('div');
+  row.className = 'resource-row';
+  row.innerHTML = `
+    <input type="text" class="res-label" placeholder="Label (e.g. Study Guide)" value="${escapeHtml(label || '')}">
+    <input type="text" class="res-url" placeholder="URL" value="${escapeHtml(url || '')}">
+    <button type="button" class="icon-btn res-remove" title="Remove">✕</button>
+  `;
+  row.querySelector('.res-remove').onclick = () => row.remove();
+  container.appendChild(row);
+}
+
+function collectResources(){
+  const rows = document.querySelectorAll('#resourceRows .resource-row');
+  const resources = [];
+  rows.forEach(row => {
+    const url = row.querySelector('.res-url').value.trim();
+    const label = row.querySelector('.res-label').value.trim();
+    if(url){
+      resources.push({label: label || 'Resource', url});
+    }
+  });
+  return resources;
+}
+
+document.getElementById('addResourceBtn').addEventListener('click', () => addResourceRow());
+
+function updateCoverPreview(url){
+  const box = document.getElementById('coverPreviewBox');
+  if(url){
+    box.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = url;
+    img.onerror = () => { box.innerHTML = bookIconSvg; };
+    box.appendChild(img);
+  } else {
+    box.innerHTML = bookIconSvg;
+  }
+}
+
+function openModal(book){
+  document.getElementById('modalBackdrop').style.display = 'flex';
+  document.getElementById('coverFetchStatus').textContent = '';
+  document.getElementById('resourceRows').innerHTML = '';
+  if(book){
+    document.getElementById('modalTitle').textContent = 'Edit Card';
+    document.getElementById('editId').value = book.id;
+    document.getElementById('fTitle').value = book.title;
+    document.getElementById('fAuthor').value = book.author;
+    document.getElementById('fGenre').value = book.genre;
+    document.getElementById('fSeries').value = book.series || '';
+    document.getElementById('fLink').value = book.link;
+    document.getElementById('fNotes').value = book.notes || '';
+    document.getElementById('fCover').value = book.cover || '';
+    updateCoverPreview(book.cover || '');
+    (book.resources || []).forEach(r => addResourceRow(r.label, r.url));
+  } else {
+    document.getElementById('modalTitle').textContent = 'New Card';
+    document.getElementById('editId').value = '';
+    ['fTitle','fAuthor','fGenre','fSeries','fLink','fNotes','fCover'].forEach(id => document.getElementById(id).value = '');
+    updateCoverPreview('');
+  }
+  refreshGenreList();
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').style.display = 'none';
+}
+document.getElementById('addBtn').onclick = () => openModal();
+document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+  if(e.target.id === 'modalBackdrop') closeModal();
+});
+document.getElementById('fCover').addEventListener('input', (e) => updateCoverPreview(e.target.value.trim()));
+
+document.getElementById('fetchCoverBtn').addEventListener('click', async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  const author = document.getElementById('fAuthor').value.trim();
+  const statusEl = document.getElementById('coverFetchStatus');
+  const btn = document.getElementById('fetchCoverBtn');
+
+  if(!title){
+    statusEl.textContent = 'Add a title first.';
+    return;
+  }
+  statusEl.textContent = 'Searching Open Library…';
+  btn.disabled = true;
+  try{
+    const q = encodeURIComponent(author ? `${title} ${author}` : title);
+    const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1`);
+    const data = await res.json();
+    const doc = data.docs && data.docs[0];
+    if(doc && doc.cover_i){
+      const coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+      document.getElementById('fCover').value = coverUrl;
+      updateCoverPreview(coverUrl);
+      statusEl.textContent = 'Found a cover — check it matches before saving.';
+    } else {
+      statusEl.textContent = 'No cover found. Try pasting an image URL instead.';
+    }
+  }catch(e){
+    statusEl.textContent = 'Could not reach Open Library. Try pasting an image URL instead.';
+  }
+  btn.disabled = false;
+});
+
+function refreshGenreList(){
+  const dl = document.getElementById('genreList');
+  const genres = [...new Set(books.map(b => b.genre))];
+  dl.innerHTML = genres.map(g => `<option value="${escapeHtml(g)}">`).join('');
+
+  const seriesDl = document.getElementById('seriesList');
+  const seriesNames = [...new Set(books.map(b => b.series).filter(Boolean))];
+  seriesDl.innerHTML = seriesNames.map(s => `<option value="${escapeHtml(s)}">`).join('');
+}
+
+async function saveBook(){
+  if(!isLoggedIn){
+    closeModal();
+    return;
+  }
+  const title = document.getElementById('fTitle').value.trim();
+  const author = document.getElementById('fAuthor').value.trim();
+  const genre = document.getElementById('fGenre').value.trim();
+  const series = document.getElementById('fSeries').value.trim();
+  const link = document.getElementById('fLink').value.trim();
+  const notes = document.getElementById('fNotes').value.trim();
+  const cover = document.getElementById('fCover').value.trim();
+  const editId = document.getElementById('editId').value;
+  const resources = collectResources();
+
+  if(!title || !author || !genre || !link){
+    document.getElementById('statusLine').textContent = 'Title, author, genre, and a link are all required.';
+    return;
+  }
+
+  if(editId){
+    const idx = books.findIndex(b => b.id === editId);
+    if(idx > -1){
+      books[idx] = {...books[idx], title, author, genre, series, link, notes, cover, resources};
+    }
+  } else {
+    books.push({id: uid(), title, author, genre, series, link, notes, cover, resources, addedAt: Date.now()});
+  }
+  await persist();
+  closeModal();
+  document.getElementById('statusLine').textContent = '';
+  render();
+}
+
+async function deleteBook(id){
+  if(!isLoggedIn) return;
+  books = books.filter(b => b.id !== id);
+  await persist();
+  render();
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function cardCoverError(imgEl){
+  const placeholder = document.createElement('div');
+  placeholder.className = 'cover-placeholder';
+  placeholder.innerHTML = bookIconSvg;
+  imgEl.replaceWith(placeholder);
+}
+
+function render(){
+  const genres = ['All', ...new Set(books.map(b => b.genre))];
+  const tabsEl = document.getElementById('genreTabs');
+  tabsEl.innerHTML = genres.map(g =>
+    `<button class="drawer-tab ${g===activeGenre?'active':''}" data-genre="${escapeHtml(g)}">${escapeHtml(g)}</button>`
+  ).join('');
+  tabsEl.querySelectorAll('.drawer-tab').forEach(btn => {
+    btn.onclick = () => { activeGenre = btn.dataset.genre; render(); };
+  });
+
+  const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  let filtered = books.filter(b => {
+    const matchesGenre = activeGenre === 'All' || b.genre === activeGenre;
+    const matchesSeries = !activeSeries || b.series === activeSeries;
+    const matchesSearch = !searchTerm ||
+      b.title.toLowerCase().includes(searchTerm) ||
+      b.author.toLowerCase().includes(searchTerm);
+    return matchesGenre && matchesSeries && matchesSearch;
+  });
+
+  filtered.sort((a,b) => {
+    if(sortMode === 'title') return a.title.localeCompare(b.title);
+    if(sortMode === 'author') return a.author.localeCompare(b.author);
+    if(sortMode === 'genre') return a.genre.localeCompare(b.genre);
+    if(sortMode === 'added') return b.addedAt - a.addedAt;
+    return 0;
+  });
+
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyState');
+
+  if(books.length === 0){
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    document.querySelector('.drawer-tabs').style.display = 'none';
+    document.querySelector('.toolbar').style.display = 'none';
+    document.getElementById('emptyState').querySelector('.btn').style.display = isLoggedIn ? 'inline-block' : 'none';
+    document.getElementById('emptyState').querySelector('h2').textContent = isLoggedIn ? 'This drawer is empty.' : 'Nothing filed yet.';
+    return;
+  }
+  document.querySelector('.drawer-tabs').style.display = 'flex';
+  document.querySelector('.toolbar').style.display = 'flex';
+  document.getElementById('addBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+  empty.style.display = 'none';
+
+  if(filtered.length === 0){
+    grid.innerHTML = `<p style="color:var(--paper-text-soft); grid-column:1/-1;">No books match that search in this drawer.</p>`;
+  } else {
+    grid.innerHTML = filtered.map(b => `
+      <div class="card">
+        <div class="card-top">
+          ${b.cover
+            ? `<img class="cover-thumb" src="${escapeHtml(b.cover)}" onerror="cardCoverError(this)">`
+            : `<div class="cover-placeholder">${bookIconSvg}</div>`
+          }
+          <div class="card-info">
+            <span class="genre-tag">${escapeHtml(b.genre)}</span>
+            <h3>${escapeHtml(b.title)}</h3>
+            <p class="author">${escapeHtml(b.author)}</p>
+            ${b.series ? `<button type="button" class="series-tag" data-series="${escapeHtml(b.series)}">${escapeHtml(b.series)}</button>` : ''}
+          </div>
+        </div>
+        ${b.notes ? `<p class="notes">${escapeHtml(b.notes)}</p>` : '<div class="notes"></div>'}
+        ${b.resources && b.resources.length > 0 ? `
+        <details class="resources-dropdown">
+          <summary>Resources (${b.resources.length})</summary>
+          <ul>
+            ${b.resources.map(r => `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.label)}</a></li>`).join('')}
+          </ul>
+        </details>` : ''}
+        <div class="card-footer">
+          <a class="stamp" href="${escapeHtml(b.link)}" target="_blank" rel="noopener">Open / Download</a>
+          ${isLoggedIn ? `
+          <div>
+            <button class="icon-btn" title="Edit" data-edit="${b.id}">Edit</button>
+            <button class="icon-btn" title="Remove" data-del="${b.id}">Remove</button>
+          </div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    grid.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.onclick = () => { if(isLoggedIn) openModal(books.find(b => b.id === btn.dataset.edit)); };
+    });
+    grid.querySelectorAll('[data-del]').forEach(btn => {
+      btn.onclick = () => {
+        if(!isLoggedIn) return;
+        if(confirm('Remove this book from the catalog? (This only removes the entry — the file itself is untouched on your cloud drive.)')){
+          deleteBook(btn.dataset.del);
+        }
+      };
+    });
+    grid.querySelectorAll('[data-series]').forEach(btn => {
+      btn.onclick = () => {
+        activeSeries = (activeSeries === btn.dataset.series) ? null : btn.dataset.series;
+        render();
+      };
+    });
+  }
+
+  document.getElementById('statusLine').innerHTML =
+    `<span class="count">${filtered.length}</span> of ${books.length} books shown${activeGenre !== 'All' ? ' · filed under ' + escapeHtml(activeGenre) : ''}${activeSeries ? ' · series: ' + escapeHtml(activeSeries) + ' <a href="#" id="clearSeriesBtn" style="color:var(--brass-bright); text-decoration:underline;">(clear)</a>' : ''}`;
+  if(activeSeries){
+    document.getElementById('clearSeriesBtn').onclick = (e) => {
+      e.preventDefault();
+      activeSeries = null;
+      render();
+    };
+  }
+}
+
+document.getElementById('searchInput').addEventListener('input', render);
+document.getElementById('sortSelect').addEventListener('change', (e) => {
+  sortMode = e.target.value;
+  render();
+});
+
+const PAGE_PASSWORD_HASH = 'h_x0trgj_19';
+
+function unlockPage(){
+  document.getElementById('pageGate').style.display = 'none';
+  document.getElementById('appContent').style.display = 'block';
+  loadBooks();
+}
+
+document.getElementById('gateSubmitBtn').addEventListener('click', () => {
+  const pw = document.getElementById('gatePasswordInput').value;
+  const errorEl = document.getElementById('gateError');
+
+  if(!pw){
+    errorEl.textContent = 'Enter a password.';
+    return;
+  }
+
+  if(simpleHash(pw) === PAGE_PASSWORD_HASH){
+    unlockPage();
+  } else {
+    errorEl.textContent = 'Incorrect password.';
+  }
+});
+
+document.getElementById('gatePasswordInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('gateSubmitBtn').click();
+});
+
+</script>
+</body>
+</html>
