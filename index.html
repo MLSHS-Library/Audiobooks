@@ -637,7 +637,8 @@
     </div>
     <div class="field">
       <label>Genre <span class="required-star">*</span></label>
-      <input type="text" id="fGenre" placeholder="e.g. Sci-Fi" list="genreList">
+      <input type="text" id="fGenre" placeholder="e.g. Sci-Fi, Adventure" list="genreList">
+      <p class="hint" style="margin:4px 0 0;">Separate multiple genres with a comma.</p>
       <datalist id="genreList"></datalist>
     </div>
     <div class="field">
@@ -930,7 +931,7 @@ function openModal(book){
     document.getElementById('editId').value = book.id;
     document.getElementById('fTitle').value = book.title;
     document.getElementById('fAuthor').value = book.author;
-    document.getElementById('fGenre').value = book.genre;
+    document.getElementById('fGenre').value = getGenres(book).join(', ');
     document.getElementById('fSeries').value = book.series || '';
     document.getElementById('fLink').value = book.link;
     document.getElementById('fNotes').value = book.notes || '';
@@ -987,7 +988,7 @@ document.getElementById('fetchCoverBtn').addEventListener('click', async () => {
 
 function refreshGenreList(){
   const dl = document.getElementById('genreList');
-  const genres = [...new Set(books.map(b => b.genre))];
+  const genres = [...new Set(books.flatMap(b => getGenres(b)))];
   dl.innerHTML = genres.map(g => `<option value="${escapeHtml(g)}">`).join('');
 
   const seriesDl = document.getElementById('seriesList');
@@ -1002,7 +1003,8 @@ async function saveBook(){
   }
   const title = document.getElementById('fTitle').value.trim();
   const author = document.getElementById('fAuthor').value.trim();
-  const genre = document.getElementById('fGenre').value.trim();
+  const genreInput = document.getElementById('fGenre').value.trim();
+  const genres = genreInput.split(',').map(g => g.trim()).filter(Boolean);
   const series = document.getElementById('fSeries').value.trim();
   const link = document.getElementById('fLink').value.trim();
   const notes = document.getElementById('fNotes').value.trim();
@@ -1010,7 +1012,7 @@ async function saveBook(){
   const editId = document.getElementById('editId').value;
   const resources = collectResources();
 
-  if(!title || !author || !genre || !link){
+  if(!title || !author || genres.length === 0 || !link){
     document.getElementById('statusLine').textContent = 'Title, author, genre, and a link are all required.';
     return;
   }
@@ -1018,10 +1020,10 @@ async function saveBook(){
   if(editId){
     const idx = books.findIndex(b => b.id === editId);
     if(idx > -1){
-      books[idx] = {...books[idx], title, author, genre, series, link, notes, cover, resources};
+      books[idx] = {...books[idx], title, author, genres, genre: undefined, series, link, notes, cover, resources};
     }
   } else {
-    books.push({id: uid(), title, author, genre, series, link, notes, cover, resources, addedAt: Date.now()});
+    books.push({id: uid(), title, author, genres, series, link, notes, cover, resources, addedAt: Date.now()});
   }
   await persist();
   closeModal();
@@ -1042,6 +1044,12 @@ function escapeHtml(str){
   return div.innerHTML;
 }
 
+function getGenres(b){
+  if(b.genres && b.genres.length) return b.genres;
+  if(b.genre) return [b.genre];
+  return [];
+}
+
 function cardCoverError(imgEl){
   const placeholder = document.createElement('div');
   placeholder.className = 'cover-placeholder';
@@ -1050,7 +1058,8 @@ function cardCoverError(imgEl){
 }
 
 function render(){
-  const genres = ['All', ...new Set(books.map(b => b.genre))];
+  const uniqueGenres = [...new Set(books.flatMap(b => getGenres(b)))].sort((a, b) => a.localeCompare(b));
+  const genres = ['All', ...uniqueGenres];
   const tabsEl = document.getElementById('genreTabs');
   tabsEl.innerHTML = genres.map(g =>
     `<button class="drawer-tab ${g===activeGenre?'active':''}" data-genre="${escapeHtml(g)}">${escapeHtml(g)}</button>`
@@ -1062,7 +1071,7 @@ function render(){
   const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
 
   let filtered = books.filter(b => {
-    const matchesGenre = activeGenre === 'All' || b.genre === activeGenre;
+    const matchesGenre = activeGenre === 'All' || getGenres(b).includes(activeGenre);
     const matchesSeries = !activeSeries || b.series === activeSeries;
     const matchesSearch = !searchTerm ||
       b.title.toLowerCase().includes(searchTerm) ||
@@ -1073,7 +1082,7 @@ function render(){
   filtered.sort((a,b) => {
     if(sortMode === 'title') return a.title.localeCompare(b.title);
     if(sortMode === 'author') return a.author.localeCompare(b.author);
-    if(sortMode === 'genre') return a.genre.localeCompare(b.genre);
+    if(sortMode === 'genre') return getGenres(a).join(', ').localeCompare(getGenres(b).join(', '));
     if(sortMode === 'added') return b.addedAt - a.addedAt;
     return 0;
   });
@@ -1106,7 +1115,9 @@ function render(){
             : `<div class="cover-placeholder">${bookIconSvg}</div>`
           }
           <div class="card-info">
-            <span class="genre-tag">${escapeHtml(b.genre)}</span>
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px;">
+              ${getGenres(b).map(g => `<span class="genre-tag" style="margin:0;">${escapeHtml(g)}</span>`).join('')}
+            </div>
             <h3>${escapeHtml(b.title)}</h3>
             <p class="author">${escapeHtml(b.author)}</p>
             ${b.series ? `<button type="button" class="series-tag" data-series="${escapeHtml(b.series)}">${escapeHtml(b.series)}</button>` : ''}
