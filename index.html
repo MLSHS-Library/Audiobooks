@@ -262,7 +262,7 @@
     border:none;
     border-bottom:1px dashed #A56A50;
     padding:0;
-    margin:4px 0 0;
+    margin:0;
     width:fit-content;
     cursor:pointer;
     text-align:left;
@@ -643,8 +643,9 @@
     </div>
     <div class="field">
       <label>Series (optional)</label>
-      <input type="text" id="fSeries" placeholder="e.g. Foundation" list="seriesList">
+      <input type="text" id="fSeries" placeholder="e.g. Foundation, Robot" list="seriesList">
       <datalist id="seriesList"></datalist>
+      <p class="hint" style="margin:4px 0 0;">Separate multiple series with a comma.</p>
     </div>
     <div class="field">
       <label>Cloud link (Drive / Dropbox share link) <span class="required-star">*</span></label>
@@ -932,7 +933,7 @@ function openModal(book){
     document.getElementById('fTitle').value = book.title;
     document.getElementById('fAuthor').value = book.author;
     document.getElementById('fGenre').value = getGenres(book).join(', ');
-    document.getElementById('fSeries').value = book.series || '';
+    document.getElementById('fSeries').value = getSeries(book).join(', ');
     document.getElementById('fLink').value = book.link;
     document.getElementById('fNotes').value = book.notes || '';
     document.getElementById('fCover').value = book.cover || '';
@@ -992,7 +993,7 @@ function refreshGenreList(){
   dl.innerHTML = genres.map(g => `<option value="${escapeHtml(g)}">`).join('');
 
   const seriesDl = document.getElementById('seriesList');
-  const seriesNames = [...new Set(books.map(b => b.series).filter(Boolean))];
+  const seriesNames = [...new Set(books.flatMap(b => getSeries(b)))];
   seriesDl.innerHTML = seriesNames.map(s => `<option value="${escapeHtml(s)}">`).join('');
 }
 
@@ -1005,7 +1006,8 @@ async function saveBook(){
   const author = document.getElementById('fAuthor').value.trim();
   const genreInput = document.getElementById('fGenre').value.trim();
   const genres = genreInput.split(',').map(g => g.trim()).filter(Boolean);
-  const series = document.getElementById('fSeries').value.trim();
+  const seriesInput = document.getElementById('fSeries').value.trim();
+  const series = seriesInput.split(',').map(s => s.trim()).filter(Boolean);
   const link = document.getElementById('fLink').value.trim();
   const notes = document.getElementById('fNotes').value.trim();
   const cover = document.getElementById('fCover').value.trim();
@@ -1050,6 +1052,12 @@ function getGenres(b){
   return [];
 }
 
+function getSeries(b){
+  if(Array.isArray(b.series)) return b.series;
+  if(b.series) return [b.series];
+  return [];
+}
+
 function cardCoverError(imgEl){
   const placeholder = document.createElement('div');
   placeholder.className = 'cover-placeholder';
@@ -1072,7 +1080,7 @@ function render(){
 
   let filtered = books.filter(b => {
     const matchesGenre = activeGenre === 'All' || getGenres(b).includes(activeGenre);
-    const matchesSeries = !activeSeries || b.series === activeSeries;
+    const matchesSeries = !activeSeries || getSeries(b).includes(activeSeries);
     const matchesSearch = !searchTerm ||
       b.title.toLowerCase().includes(searchTerm) ||
       b.author.toLowerCase().includes(searchTerm);
@@ -1120,7 +1128,7 @@ function render(){
             </div>
             <h3>${escapeHtml(b.title)}</h3>
             <p class="author">${escapeHtml(b.author)}</p>
-            ${b.series ? `<button type="button" class="series-tag" data-series="${escapeHtml(b.series)}">${escapeHtml(b.series)}</button>` : ''}
+            ${getSeries(b).length > 0 ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">${getSeries(b).map(s => `<button type="button" class="series-tag" data-series="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}</div>` : ''}
           </div>
         </div>
         ${b.notes ? `<p class="notes">${escapeHtml(b.notes)}</p>` : '<div class="notes"></div>'}
