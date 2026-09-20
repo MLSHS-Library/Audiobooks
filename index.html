@@ -833,13 +833,25 @@ function firestoreDocUrl(id){
 
 async function fetchSharedBooks(){
   try{
-    const res = await fetch(`${FIRESTORE_COLLECTION_URL}?key=${FIREBASE_API_KEY}&pageSize=300`);
-    if(!res.ok){
-      return null;
-    }
-    const data = await res.json();
-    if(!data.documents) return [];
-    return data.documents.map(doc => {
+    let allDocs = [];
+    let pageToken = null;
+    do{
+      let url = `${FIRESTORE_COLLECTION_URL}?key=${FIREBASE_API_KEY}&pageSize=300`;
+      if(pageToken){
+        url += `&pageToken=${encodeURIComponent(pageToken)}`;
+      }
+      const res = await fetch(url);
+      if(!res.ok){
+        return null;
+      }
+      const data = await res.json();
+      if(data.documents){
+        allDocs = allDocs.concat(data.documents);
+      }
+      pageToken = data.nextPageToken || null;
+    } while(pageToken);
+
+    return allDocs.map(doc => {
       try{
         return JSON.parse(doc.fields.data.stringValue);
       }catch(e){
