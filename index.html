@@ -682,7 +682,11 @@
 
 <div class="login-footer">
   <span class="login-status" id="loginStatus">Viewing only</span>
-  <button class="btn ghost small" id="loginBtn">Log in to edit</button>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button class="btn ghost small" id="exportBtn" style="display:none;">Export Library (.json)</button>
+    <button class="btn ghost small" id="recoverBtn" style="display:none;">Recover Old Catalog</button>
+    <button class="btn ghost small" id="loginBtn">Log in to edit</button>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="loginBackdrop" style="display:none;">
@@ -742,14 +746,20 @@ const EDIT_PASSWORD_HASH = 'h_eggp29_18';
 function updateLoginUI(){
   const statusEl = document.getElementById('loginStatus');
   const btn = document.getElementById('loginBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const recoverBtn = document.getElementById('recoverBtn');
   if(isLoggedIn){
     statusEl.textContent = 'Editing enabled';
     statusEl.classList.add('active');
     btn.textContent = 'Log out';
+    exportBtn.style.display = 'inline-block';
+    recoverBtn.style.display = 'inline-block';
   } else {
     statusEl.textContent = 'Viewing only';
     statusEl.classList.remove('active');
     btn.textContent = 'Log in to edit';
+    exportBtn.style.display = 'none';
+    recoverBtn.style.display = 'none';
   }
 }
 
@@ -815,33 +825,49 @@ buildWaveform();
 
 const FIREBASE_API_KEY = 'AIzaSyBydKS6lm68O1PvGtUh5UGsTeyqEwEmt90';
 const FIREBASE_PROJECT_ID = 'mlshs-audiobook-library';
-const FIRESTORE_DOC_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/library/books?key=${FIREBASE_API_KEY}`;
+const FIRESTORE_COLLECTION_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/library`;
+
+function firestoreDocUrl(id){
+  return `${FIRESTORE_COLLECTION_URL}/${encodeURIComponent(id)}?key=${FIREBASE_API_KEY}`;
+}
 
 async function fetchSharedBooks(){
   try{
-    const res = await fetch(FIRESTORE_DOC_URL);
-    if(res.status === 404){
-      return [];
-    }
+    const res = await fetch(`${FIRESTORE_COLLECTION_URL}?key=${FIREBASE_API_KEY}&pageSize=300`);
     if(!res.ok){
       return null;
     }
     const data = await res.json();
-    const raw = data.fields && data.fields.data && data.fields.data.stringValue;
-    return raw ? JSON.parse(raw) : [];
+    if(!data.documents) return [];
+    return data.documents.map(doc => {
+      try{
+        return JSON.parse(doc.fields.data.stringValue);
+      }catch(e){
+        return null;
+      }
+    }).filter(Boolean);
   }catch(e){
     return null;
   }
 }
 
-async function saveSharedBooks(booksArr){
+async function saveOneBook(book){
   try{
-    const body = { fields: { data: { stringValue: JSON.stringify(booksArr) } } };
-    const res = await fetch(FIRESTORE_DOC_URL, {
+    const body = { fields: { data: { stringValue: JSON.stringify(book) } } };
+    const res = await fetch(firestoreDocUrl(book.id), {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body)
     });
+    return res.ok;
+  }catch(e){
+    return false;
+  }
+}
+
+async function deleteOneBook(id){
+  try{
+    const res = await fetch(firestoreDocUrl(id), { method: 'DELETE' });
     return res.ok;
   }catch(e){
     return false;
@@ -869,14 +895,58 @@ async function loadBooks(){
   render();
 }
 
-async function persist(){
-  document.getElementById('syncNotice').textContent = 'Syncing…';
-  const ok = await saveSharedBooks(books);
-  localSet(STORAGE_KEY, JSON.stringify(books));
-  document.getElementById('syncNotice').textContent = ok
-    ? ''
-    : 'Could not reach the shared library — this change was only saved on this device.';
+function exportLibrary(){
+  const dataStr = JSON.stringify(books, null, 2);
+  const blob = new Blob([dataStr], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'audiobook-library-export.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
+
+async function recoverOldCatalog(){
+  if(!isLoggedIn) return;
+  if(!confirm('This looks for books saved under the old storage format and adds them back into the shared library. Continue?')){
+    return;
+  }
+  const oldDocUrl = `${FIRESTORE_COLLECTION_URL}/books?key=${FIREBASE_API_KEY}`;
+  document.getElementById('syncNotice').textContent = 'Looking for the old catalog…';
+  try{
+    const res = await fetch(oldDocUrl);
+    if(!res.ok){
+      document.getElementById('syncNotice').textContent = 'No old catalog found — nothing to recover.';
+      return;
+    }
+    const data = await res.json();
+    const raw = data.fields && data.fields.data && data.fields.data.stringValue;
+    const oldBooks = raw ? JSON.parse(raw) : [];
+    if(!oldBooks.length){
+      document.getElementById('syncNotice').textContent = 'No old catalog found — nothing to recover.';
+      return;
+    }
+
+    let successCount = 0;
+    for(let i = 0; i < oldBooks.length; i++){
+      document.getElementById('syncNotice').textContent = `Migrating ${i + 1} of ${oldBooks.length}…`;
+      const ok = await saveOneBook(oldBooks[i]);
+      if(ok) successCount++;
+    }
+
+    await fetch(oldDocUrl, {method: 'DELETE'});
+
+    document.getElementById('syncNotice').textContent = `Migrated ${successCount} of ${oldBooks.length} books.`;
+    await loadBooks();
+  }catch(e){
+    document.getElementById('syncNotice').textContent = 'Something went wrong while recovering the old catalog.';
+  }
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportLibrary);
+document.getElementById('recoverBtn').addEventListener('click', recoverOldCatalog);
 
 function uid(){
   return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
@@ -1019,25 +1089,41 @@ async function saveBook(){
     return;
   }
 
+  let bookToSave;
   if(editId){
     const idx = books.findIndex(b => b.id === editId);
     if(idx > -1){
       books[idx] = {...books[idx], title, author, genres, genre: undefined, series, link, notes, cover, resources};
+      bookToSave = books[idx];
     }
   } else {
-    books.push({id: uid(), title, author, genres, series, link, notes, cover, resources, addedAt: Date.now()});
+    bookToSave = {id: uid(), title, author, genres, series, link, notes, cover, resources, addedAt: Date.now()};
+    books.push(bookToSave);
   }
-  await persist();
+
+  localSet(STORAGE_KEY, JSON.stringify(books));
   closeModal();
   document.getElementById('statusLine').textContent = '';
   render();
+
+  document.getElementById('syncNotice').textContent = 'Syncing…';
+  const ok = await saveOneBook(bookToSave);
+  document.getElementById('syncNotice').textContent = ok
+    ? ''
+    : 'Could not reach the shared library — this change was only saved on this device.';
 }
 
 async function deleteBook(id){
   if(!isLoggedIn) return;
   books = books.filter(b => b.id !== id);
-  await persist();
+  localSet(STORAGE_KEY, JSON.stringify(books));
   render();
+
+  document.getElementById('syncNotice').textContent = 'Syncing…';
+  const ok = await deleteOneBook(id);
+  document.getElementById('syncNotice').textContent = ok
+    ? ''
+    : 'Could not reach the shared library — this change was only removed on this device.';
 }
 
 function escapeHtml(str){
