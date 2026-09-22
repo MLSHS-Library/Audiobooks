@@ -619,7 +619,7 @@
 <div class="empty" id="emptyState" style="display:none;">
   <h2>This drawer is empty.</h2>
   <p>Add the first audiobook — paste in its title, author, genre, and the share link from Drive or Dropbox.</p>
-  <button class="btn" onclick="openModal()">+ Add Audiobook</button>
+  <button class="btn" id="emptyAddBtn">+ Add Audiobook</button>
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" style="display:none;">
@@ -674,8 +674,8 @@
       <button type="button" class="btn small ghost" id="addResourceBtn" style="margin-top:2px;">+ Add resource</button>
     </div>
     <div class="modal-actions">
-      <button class="btn secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn" onclick="saveBook()">Save to Catalog</button>
+      <button class="btn secondary" id="modalCancelBtn">Cancel</button>
+      <button class="btn" id="modalSaveBtn">Save to Catalog</button>
     </div>
   </div>
 </div>
@@ -699,7 +699,7 @@
     </div>
     <p class="login-error" id="loginError"></p>
     <div class="modal-actions">
-      <button class="btn secondary" onclick="closeLoginModal()">Cancel</button>
+      <button class="btn secondary" id="loginCancelBtn">Cancel</button>
       <button class="btn" id="loginSubmitBtn">Log In</button>
     </div>
   </div>
@@ -708,12 +708,13 @@
 </div>
 
 <script>
+(() => {
+'use strict';
 const STORAGE_KEY = 'audiobooks';
 let books = [];
 let activeGenre = 'All';
 let activeSeries = null;
 let sortMode = 'title';
-let isLoggedIn = false;
 
 const FIREBASE_API_KEY = 'AIzaSyBydKS6lm68O1PvGtUh5UGsTeyqEwEmt90';
 const FIREBASE_PROJECT_ID = 'mlshs-audiobook-library';
@@ -726,6 +727,8 @@ let readIdToken = null;
 let readRefreshToken = null;
 let editIdToken = null;
 let editRefreshToken = null;
+
+function canEdit(){ return !!editIdToken; }
 
 async function firebaseSignIn(email, password){
   try{
@@ -818,7 +821,7 @@ function updateLoginUI(){
   const btn = document.getElementById('loginBtn');
   const exportBtn = document.getElementById('exportBtn');
   const recoverBtn = document.getElementById('recoverBtn');
-  if(isLoggedIn){
+  if(canEdit()){
     statusEl.textContent = 'Editing enabled';
     statusEl.classList.add('active');
     btn.textContent = 'Log out';
@@ -846,8 +849,7 @@ document.getElementById('loginBackdrop').addEventListener('click', (e) => {
 });
 
 document.getElementById('loginBtn').addEventListener('click', () => {
-  if(isLoggedIn){
-    isLoggedIn = false;
+  if(canEdit()){
     editIdToken = null;
     editRefreshToken = null;
     updateLoginUI();
@@ -879,7 +881,6 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async () => 
   if(result){
     editIdToken = result.idToken;
     editRefreshToken = result.refreshToken;
-    isLoggedIn = true;
     updateLoginUI();
     closeLoginModal();
     render();
@@ -972,20 +973,19 @@ async function deleteOneBook(id){
 }
 
 async function loadBooks(){
+  books = [];
+  if(!readIdToken){
+    updateLoginUI();
+    render();
+    return;
+  }
   document.getElementById('statusLine').textContent = 'Opening the drawer…';
   const shared = await fetchSharedBooks();
   if(shared !== null){
     books = shared;
-    localSet(STORAGE_KEY, JSON.stringify(books));
     document.getElementById('syncNotice').textContent = '';
   } else {
-    try{
-      const result = localGet(STORAGE_KEY);
-      books = result ? JSON.parse(result.value) : [];
-    }catch(e){
-      books = [];
-    }
-    document.getElementById('syncNotice').textContent = 'Could not reach the shared library — showing the last saved copy on this device.';
+    document.getElementById('syncNotice').textContent = 'Could not load the library. Please reload the page and log in again.';
   }
   updateLoginUI();
   document.getElementById('statusLine').textContent = '';
@@ -1006,7 +1006,7 @@ function exportLibrary(){
 }
 
 async function recoverOldCatalog(){
-  if(!isLoggedIn) return;
+  if(!canEdit()) return;
   if(!confirm('This looks for books saved under the old storage format and adds them back into the shared library. Continue?')){
     return;
   }
@@ -1165,7 +1165,7 @@ function refreshGenreList(){
 }
 
 async function saveBook(){
-  if(!isLoggedIn){
+  if(!canEdit()){
     closeModal();
     return;
   }
@@ -1187,40 +1187,41 @@ async function saveBook(){
   }
 
   let bookToSave;
-  if(editId){
-    const idx = books.findIndex(b => b.id === editId);
-    if(idx > -1){
-      books[idx] = {...books[idx], title, author, genres, genre: undefined, series, link, notes, cover, resources};
-      bookToSave = books[idx];
-    }
+  const idx = editId ? books.findIndex(b => b.id === editId) : -1;
+  if(editId && idx > -1){
+    bookToSave = {...books[idx], title, author, genres, series, link, notes, cover, resources};
+    delete bookToSave.genre;
   } else {
     bookToSave = {id: uid(), title, author, genres, series, link, notes, cover, resources, addedAt: Date.now()};
-    books.push(bookToSave);
   }
 
-  localSet(STORAGE_KEY, JSON.stringify(books));
+  document.getElementById('statusLine').textContent = 'Saving…';
+  const ok = await saveOneBook(bookToSave);
+  if(!ok){
+    document.getElementById('statusLine').textContent = 'Not saved. The server did not accept this change. Please log in to edit again.';
+    return;
+  }
+  if(idx > -1){
+    books[idx] = bookToSave;
+  } else {
+    books.push(bookToSave);
+  }
   closeModal();
   document.getElementById('statusLine').textContent = '';
   render();
-
-  document.getElementById('syncNotice').textContent = 'Syncing…';
-  const ok = await saveOneBook(bookToSave);
-  document.getElementById('syncNotice').textContent = ok
-    ? ''
-    : 'Could not reach the shared library — this change was only saved on this device.';
 }
 
 async function deleteBook(id){
-  if(!isLoggedIn) return;
-  books = books.filter(b => b.id !== id);
-  localSet(STORAGE_KEY, JSON.stringify(books));
-  render();
-
-  document.getElementById('syncNotice').textContent = 'Syncing…';
+  if(!canEdit()) return;
+  document.getElementById('syncNotice').textContent = 'Removing…';
   const ok = await deleteOneBook(id);
-  document.getElementById('syncNotice').textContent = ok
-    ? ''
-    : 'Could not reach the shared library — this change was only removed on this device.';
+  if(!ok){
+    document.getElementById('syncNotice').textContent = 'Not removed. The server did not accept this change. Please log in to edit again.';
+    return;
+  }
+  books = books.filter(b => b.id !== id);
+  document.getElementById('syncNotice').textContent = '';
+  render();
 }
 
 function escapeHtml(str){
@@ -1286,13 +1287,13 @@ function render(){
     empty.style.display = 'block';
     document.querySelector('.drawer-tabs').style.display = 'none';
     document.querySelector('.toolbar').style.display = 'none';
-    document.getElementById('emptyState').querySelector('.btn').style.display = isLoggedIn ? 'inline-block' : 'none';
-    document.getElementById('emptyState').querySelector('h2').textContent = isLoggedIn ? 'This drawer is empty.' : 'Nothing filed yet.';
+    document.getElementById('emptyState').querySelector('.btn').style.display = canEdit() ? 'inline-block' : 'none';
+    document.getElementById('emptyState').querySelector('h2').textContent = canEdit() ? 'This drawer is empty.' : 'Nothing filed yet.';
     return;
   }
   document.querySelector('.drawer-tabs').style.display = 'flex';
   document.querySelector('.toolbar').style.display = 'flex';
-  document.getElementById('addBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+  document.getElementById('addBtn').style.display = canEdit() ? 'inline-block' : 'none';
   empty.style.display = 'none';
 
   if(filtered.length === 0){
@@ -1302,7 +1303,7 @@ function render(){
       <div class="card">
         <div class="card-top">
           ${b.cover
-            ? `<img class="cover-thumb" src="${escapeHtml(b.cover)}" onerror="cardCoverError(this)">`
+            ? `<img class="cover-thumb" src="${escapeHtml(b.cover)}">`
             : `<div class="cover-placeholder">${bookIconSvg}</div>`
           }
           <div class="card-info">
@@ -1324,7 +1325,7 @@ function render(){
         </details>` : ''}
         <div class="card-footer">
           <a class="stamp" href="${escapeHtml(b.link)}" target="_blank" rel="noopener">Open / Download</a>
-          ${isLoggedIn ? `
+          ${canEdit() ? `
           <div>
             <button class="icon-btn" title="Edit" data-edit="${b.id}">Edit</button>
             <button class="icon-btn" title="Remove" data-del="${b.id}">Remove</button>
@@ -1333,12 +1334,19 @@ function render(){
       </div>
     `).join('');
 
+    grid.querySelectorAll('img.cover-thumb').forEach(img => {
+      if(img.complete && img.naturalWidth === 0){
+        cardCoverError(img);
+      } else {
+        img.addEventListener('error', () => cardCoverError(img), {once: true});
+      }
+    });
     grid.querySelectorAll('[data-edit]').forEach(btn => {
-      btn.onclick = () => { if(isLoggedIn) openModal(books.find(b => b.id === btn.dataset.edit)); };
+      btn.onclick = () => { if(canEdit()) openModal(books.find(b => b.id === btn.dataset.edit)); };
     });
     grid.querySelectorAll('[data-del]').forEach(btn => {
       btn.onclick = () => {
-        if(!isLoggedIn) return;
+        if(!canEdit()) return;
         if(confirm('Remove this book from the catalog? (This only removes the entry — the file itself is untouched on your cloud drive.)')){
           deleteBook(btn.dataset.del);
         }
@@ -1369,7 +1377,10 @@ document.getElementById('sortSelect').addEventListener('change', (e) => {
   render();
 });
 
+try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+
 function unlockPage(){
+  if(!readIdToken) return;
   document.getElementById('pageGate').style.display = 'none';
   document.getElementById('appContent').style.display = 'block';
   loadBooks();
@@ -1410,6 +1421,12 @@ document.getElementById('gatePasswordInput').addEventListener('keydown', (e) => 
   if(e.key === 'Enter') document.getElementById('gateSubmitBtn').click();
 });
 
+document.getElementById('emptyAddBtn').addEventListener('click', () => { if(canEdit()) openModal(); });
+document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+document.getElementById('modalSaveBtn').addEventListener('click', saveBook);
+document.getElementById('loginCancelBtn').addEventListener('click', closeLoginModal);
+
+})();
 </script>
 </body>
 </html>
