@@ -715,6 +715,78 @@ let activeSeries = null;
 let sortMode = 'title';
 let isLoggedIn = false;
 
+const FIREBASE_API_KEY = 'AIzaSyBydKS6lm68O1PvGtUh5UGsTeyqEwEmt90';
+const FIREBASE_PROJECT_ID = 'mlshs-audiobook-library';
+const VIEWER_EMAIL = 'viewer@mlshs-audiobook-library.app';
+const EDITOR_EMAIL = 'editor@mlshs-audiobook-library.app';
+const AUTH_SIGNIN_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
+const AUTH_REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
+
+let readIdToken = null;
+let readRefreshToken = null;
+let editIdToken = null;
+let editRefreshToken = null;
+
+async function firebaseSignIn(email, password){
+  try{
+    const res = await fetch(AUTH_SIGNIN_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password, returnSecureToken: true})
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    return {idToken: data.idToken, refreshToken: data.refreshToken};
+  }catch(e){
+    return null;
+  }
+}
+
+async function firebaseRefresh(refreshToken){
+  try{
+    const res = await fetch(AUTH_REFRESH_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    return {idToken: data.id_token, refreshToken: data.refresh_token};
+  }catch(e){
+    return null;
+  }
+}
+
+async function authFetch(url, options, tokenType){
+  const getTokens = () => tokenType === 'edit'
+    ? {token: editIdToken, refresh: editRefreshToken}
+    : {token: readIdToken, refresh: readRefreshToken};
+
+  const doFetch = (tok) => fetch(url, {
+    ...(options || {}),
+    headers: {...((options && options.headers) || {}), 'Authorization': `Bearer ${tok}`}
+  });
+
+  let {token, refresh} = getTokens();
+  if(!token) return null;
+
+  let res = await doFetch(token);
+  if((res.status === 401 || res.status === 403) && refresh){
+    const refreshed = await firebaseRefresh(refresh);
+    if(refreshed){
+      if(tokenType === 'edit'){
+        editIdToken = refreshed.idToken;
+        editRefreshToken = refreshed.refreshToken;
+      } else {
+        readIdToken = refreshed.idToken;
+        readRefreshToken = refreshed.refreshToken;
+      }
+      res = await doFetch(refreshed.idToken);
+    }
+  }
+  return res;
+}
+
 function localGet(key){
   try{
     const value = localStorage.getItem(key);
@@ -740,8 +812,6 @@ function simpleHash(str){
   }
   return 'h_' + Math.abs(hash).toString(36) + '_' + str.length;
 }
-
-const EDIT_PASSWORD_HASH = 'h_eggp29_18';
 
 function updateLoginUI(){
   const statusEl = document.getElementById('loginStatus');
@@ -778,6 +848,8 @@ document.getElementById('loginBackdrop').addEventListener('click', (e) => {
 document.getElementById('loginBtn').addEventListener('click', () => {
   if(isLoggedIn){
     isLoggedIn = false;
+    editIdToken = null;
+    editRefreshToken = null;
     updateLoginUI();
     render();
   } else {
@@ -785,16 +857,28 @@ document.getElementById('loginBtn').addEventListener('click', () => {
   }
 });
 
-document.getElementById('loginSubmitBtn').addEventListener('click', () => {
+document.getElementById('loginSubmitBtn').addEventListener('click', async () => {
   const pw = document.getElementById('loginPasswordInput').value;
   const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginSubmitBtn');
 
   if(!pw){
     errorEl.textContent = 'Enter a password.';
     return;
   }
 
-  if(simpleHash(pw) === EDIT_PASSWORD_HASH){
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  const result = await firebaseSignIn(EDITOR_EMAIL, pw);
+
+  btn.disabled = false;
+  btn.textContent = 'Log In';
+
+  if(result){
+    editIdToken = result.idToken;
+    editRefreshToken = result.refreshToken;
     isLoggedIn = true;
     updateLoginUI();
     closeLoginModal();
@@ -823,25 +907,24 @@ function buildWaveform(){
 }
 buildWaveform();
 
-const FIREBASE_API_KEY = 'AIzaSyBydKS6lm68O1PvGtUh5UGsTeyqEwEmt90';
-const FIREBASE_PROJECT_ID = 'mlshs-audiobook-library';
 const FIRESTORE_COLLECTION_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/library`;
 
 function firestoreDocUrl(id){
-  return `${FIRESTORE_COLLECTION_URL}/${encodeURIComponent(id)}?key=${FIREBASE_API_KEY}`;
+  return `${FIRESTORE_COLLECTION_URL}/${encodeURIComponent(id)}`;
 }
 
 async function fetchSharedBooks(){
+  if(!readIdToken) return null;
   try{
     let allDocs = [];
     let pageToken = null;
     do{
-      let url = `${FIRESTORE_COLLECTION_URL}?key=${FIREBASE_API_KEY}&pageSize=300`;
+      let url = `${FIRESTORE_COLLECTION_URL}?pageSize=300`;
       if(pageToken){
         url += `&pageToken=${encodeURIComponent(pageToken)}`;
       }
-      const res = await fetch(url);
-      if(!res.ok){
+      const res = await authFetch(url, {}, 'read');
+      if(!res || !res.ok){
         return null;
       }
       const data = await res.json();
@@ -864,23 +947,25 @@ async function fetchSharedBooks(){
 }
 
 async function saveOneBook(book){
+  if(!editIdToken) return false;
   try{
     const body = { fields: { data: { stringValue: JSON.stringify(book) } } };
-    const res = await fetch(firestoreDocUrl(book.id), {
+    const res = await authFetch(firestoreDocUrl(book.id), {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body)
-    });
-    return res.ok;
+    }, 'edit');
+    return !!(res && res.ok);
   }catch(e){
     return false;
   }
 }
 
 async function deleteOneBook(id){
+  if(!editIdToken) return false;
   try{
-    const res = await fetch(firestoreDocUrl(id), { method: 'DELETE' });
-    return res.ok;
+    const res = await authFetch(firestoreDocUrl(id), { method: 'DELETE' }, 'edit');
+    return !!(res && res.ok);
   }catch(e){
     return false;
   }
@@ -925,11 +1010,11 @@ async function recoverOldCatalog(){
   if(!confirm('This looks for books saved under the old storage format and adds them back into the shared library. Continue?')){
     return;
   }
-  const oldDocUrl = `${FIRESTORE_COLLECTION_URL}/books?key=${FIREBASE_API_KEY}`;
+  const oldDocUrl = `${FIRESTORE_COLLECTION_URL}/books`;
   document.getElementById('syncNotice').textContent = 'Looking for the old catalog…';
   try{
-    const res = await fetch(oldDocUrl);
-    if(!res.ok){
+    const res = await authFetch(oldDocUrl, {}, 'edit');
+    if(!res || !res.ok){
       document.getElementById('syncNotice').textContent = 'No old catalog found — nothing to recover.';
       return;
     }
@@ -948,7 +1033,7 @@ async function recoverOldCatalog(){
       if(ok) successCount++;
     }
 
-    await fetch(oldDocUrl, {method: 'DELETE'});
+    await authFetch(oldDocUrl, {method: 'DELETE'}, 'edit');
 
     document.getElementById('syncNotice').textContent = `Migrated ${successCount} of ${oldBooks.length} books.`;
     await loadBooks();
@@ -1284,24 +1369,37 @@ document.getElementById('sortSelect').addEventListener('change', (e) => {
   render();
 });
 
-const PAGE_PASSWORD_HASH = 'h_x0trgj_19';
-
 function unlockPage(){
   document.getElementById('pageGate').style.display = 'none';
   document.getElementById('appContent').style.display = 'block';
   loadBooks();
 }
 
-document.getElementById('gateSubmitBtn').addEventListener('click', () => {
+document.getElementById('gateSubmitBtn').addEventListener('click', async () => {
   const pw = document.getElementById('gatePasswordInput').value;
   const errorEl = document.getElementById('gateError');
+  const btn = document.getElementById('gateSubmitBtn');
 
   if(!pw){
     errorEl.textContent = 'Enter a password.';
     return;
   }
 
-  if(simpleHash(pw) === PAGE_PASSWORD_HASH){
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  let result = await firebaseSignIn(VIEWER_EMAIL, pw);
+  if(!result){
+    result = await firebaseSignIn(EDITOR_EMAIL, pw);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Continue';
+
+  if(result){
+    readIdToken = result.idToken;
+    readRefreshToken = result.refreshToken;
     unlockPage();
   } else {
     errorEl.textContent = 'Incorrect password.';
